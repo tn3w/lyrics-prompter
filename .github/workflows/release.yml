@@ -118,34 +118,32 @@ jobs:
           Comment=Display synchronized lyrics for karaoke-style prompting
           EOF
           dpkg-deb --build deb lyrics_prompter-amd64.deb
-      - name: Create Arch PKGBUILD
+      - name: Create Arch package
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
-          mkdir -p arch
-          cp target/release/lyrics_prompter arch/
-          cat > arch/PKGBUILD << EOF
-          pkgname=lyrics-prompter
-          pkgver=${VERSION}
-          pkgrel=1
-          pkgdesc="A lightweight desktop application for displaying synchronized lyrics"
-          arch=('x86_64')
-          url="https://github.com/tn3w/lyrics-prompter"
-          license=('Apache-2.0')
-          depends=('alsa-lib' 'gtk3')
-          source=("lyrics_prompter")
-          sha256sums=('SKIP')
-          package() {
-            install -Dm755 "\$srcdir/lyrics_prompter" "\$pkgdir/usr/bin/lyrics_prompter"
-          }
+          mkdir -p arch-pkg/usr/bin
+          cp target/release/lyrics_prompter arch-pkg/usr/bin/
+          cat > arch-pkg/.PKGINFO << EOF
+          pkgname = lyrics-prompter
+          pkgver = ${VERSION}-1
+          pkgdesc = A lightweight desktop application for displaying synchronized lyrics
+          url = https://github.com/tn3w/lyrics-prompter
+          builddate = $(date +%s)
+          packager = GitHub Actions
+          size = $(stat -c%s target/release/lyrics_prompter)
+          arch = x86_64
+          license = Apache-2.0
+          depend = alsa-lib
+          depend = gtk3
           EOF
-          cd arch && makepkg -f --noconfirm
+          cd arch-pkg && tar -czvf ../lyrics-prompter-${VERSION}-1-x86_64.pkg.tar.gz .PKGINFO usr
       - uses: actions/upload-artifact@v4
         with:
           name: linux
           path: |
             *.AppImage
             *.deb
-            arch/*.pkg.tar.zst
+            *.pkg.tar.gz
 
   release:
     needs: [check-version, build-windows, build-linux]
