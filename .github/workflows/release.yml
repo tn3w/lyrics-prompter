@@ -41,13 +41,11 @@ jobs:
           targets: ${{ matrix.target }}
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
-        working-directory: lyrics_prompter
       - name: Package
         run: |
           $arch = if ("${{ matrix.target }}" -match "x86_64") { "x64" } else { "x86" }
           mkdir dist
           cp target/${{ matrix.target }}/release/lyrics_prompter.exe dist/lyrics_prompter-windows-$arch.exe
-        working-directory: lyrics_prompter
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.target }}
@@ -66,7 +64,6 @@ jobs:
           sudo apt-get install -y libasound2-dev libgtk-3-dev
       - name: Build
         run: cargo build --release
-        working-directory: lyrics_prompter
       - name: Create AppImage
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
@@ -93,7 +90,6 @@ jobs:
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
           ./appimagetool-x86_64.AppImage AppDir lyrics_prompter-x86_64.AppImage
-        working-directory: lyrics_prompter
       - name: Create deb package
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
@@ -117,7 +113,6 @@ jobs:
           Categories=AudioVideo;Audio;
           EOF
           dpkg-deb --build deb lyrics_prompter-amd64.deb
-        working-directory: lyrics_prompter
       - name: Create Arch PKGBUILD
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
@@ -138,7 +133,6 @@ jobs:
           }
           EOF
           cd arch && makepkg -f --noconfirm
-        working-directory: lyrics_prompter
       - uses: actions/upload-artifact@v4
         with:
           name: linux
