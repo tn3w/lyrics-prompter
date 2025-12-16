@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     paths:
-      - 'lyrics_prompter/Cargo.toml'
+      - 'Cargo.toml'
     branches:
       - main
 
@@ -20,12 +20,12 @@ jobs:
       - name: Get version
         id: version
         run: |
-          VERSION=$(grep '^version' lyrics_prompter/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Check if version changed
         id: check
         run: |
-          git diff HEAD~1 HEAD -- lyrics_prompter/Cargo.toml | grep -q '^+version' && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+          git diff HEAD~1 HEAD -- Cargo.toml | grep -q '^+version' && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
 
   build-windows:
     needs: check-version
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.target }}
-          path: lyrics_prompter/dist/*
+          path: dist/*
 
   build-linux:
     needs: check-version
@@ -143,9 +143,9 @@ jobs:
         with:
           name: linux
           path: |
-            lyrics_prompter/*.AppImage
-            lyrics_prompter/*.deb
-            lyrics_prompter/arch/*.pkg.tar.zst
+            *.AppImage
+            *.deb
+            arch/*.pkg.tar.zst
 
   release:
     needs: [check-version, build-windows, build-linux]
