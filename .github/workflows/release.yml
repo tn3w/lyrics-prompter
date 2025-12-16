@@ -6,6 +6,7 @@ on:
       - 'Cargo.toml'
     branches:
       - master
+  workflow_dispatch:
 
 jobs:
   check-version:
@@ -29,7 +30,7 @@ jobs:
 
   build-windows:
     needs: check-version
-    if: needs.check-version.outputs.changed == 'true'
+    if: needs.check-version.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     strategy:
       matrix:
@@ -53,7 +54,7 @@ jobs:
 
   build-linux:
     needs: check-version
-    if: needs.check-version.outputs.changed == 'true'
+    if: needs.check-version.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -136,7 +137,7 @@ jobs:
           depend = alsa-lib
           depend = gtk3
           EOF
-          cd arch-pkg && tar -czvf ../lyrics-prompter-${VERSION}-1-x86_64.pkg.tar.gz .PKGINFO usr
+          cd arch-pkg && tar -czvf ../lyrics-prompter-x86_64.pkg.tar.gz .PKGINFO usr
       - uses: actions/upload-artifact@v4
         with:
           name: linux
