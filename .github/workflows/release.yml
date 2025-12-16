@@ -61,9 +61,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libgtk-3-dev fonts-dejavu-core
-          sudo mkdir -p /usr/share/fonts/TTF
-          sudo cp /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf /usr/share/fonts/TTF/
+          sudo apt-get install -y libasound2-dev libgtk-3-dev
       - name: Build
         run: cargo build --release
       - name: Create AppImage
@@ -92,7 +90,7 @@ jobs:
           chmod +x AppDir/AppRun
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
-          ./appimagetool-x86_64.AppImage AppDir lyrics_prompter-x86_64.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool-x86_64.AppImage AppDir lyrics_prompter-x86_64.AppImage
       - name: Create deb package
         run: |
           VERSION=${{ needs.check-version.outputs.version }}

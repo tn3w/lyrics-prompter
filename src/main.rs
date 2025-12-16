@@ -13,10 +13,17 @@ const BTN_BG: u32 = 0x1e1e1e;
 const BAR_BG: u32 = 0x252525;
 const BAR_FG: u32 = 0x707070;
 const GREEN: u32 = 0x4a9f4a;
+
 #[cfg(windows)]
-const FONT_DATA: &[u8] = include_bytes!("C:/Windows/Fonts/arialbd.ttf");
+const FONT_PATH: &str = "C:/Windows/Fonts/arialbd.ttf";
 #[cfg(not(windows))]
-const FONT_DATA: &[u8] = include_bytes!("/usr/share/fonts/TTF/DejaVuSans-Bold.ttf");
+const FONT_PATH: &str = "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf";
+
+fn load_font() -> Option<Font<'static>> {
+    std::fs::read(FONT_PATH)
+        .ok()
+        .and_then(|data| Font::try_from_vec(data))
+}
 
 fn main() {
     let mut app = App::new();
@@ -34,7 +41,7 @@ fn main() {
     )
     .unwrap();
     window.set_target_fps(60);
-    let font = Font::try_from_bytes(FONT_DATA).unwrap();
+    let font = load_font();
     let mut prev_mouse_down = false;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
@@ -63,7 +70,7 @@ fn main() {
             status_top,
             14.0,
             GRAY,
-            &font,
+            font.as_ref(),
         );
 
         let elapsed = app.get_elapsed() + 0.5;
@@ -106,9 +113,9 @@ fn main() {
             (prev, curr, next, countdown, progress)
         };
 
-        let main_size = calc_font_size(curr, width, height, &font);
+        let main_size = calc_font_size(curr, width, height, font.as_ref());
         let small_size = (main_size * 0.32).max(20.0);
-        let curr_lines = wrap_text(curr, width as f32 * 0.95, main_size, &font);
+        let curr_lines = wrap_text(curr, width as f32 * 0.95, main_size, font.as_ref());
         let curr_height = curr_lines.len() as f32 * main_size * 1.1;
 
         let content_top = 40;
@@ -123,7 +130,7 @@ fn main() {
             content_top,
             small_size,
             GRAY,
-            &font,
+            font.as_ref(),
         );
 
         let main_top = content_top + avail / 3;
@@ -137,7 +144,7 @@ fn main() {
             main_top,
             main_size,
             curr_color,
-            &font,
+            font.as_ref(),
         );
 
         let next_top = main_top + curr_height as usize + 30;
@@ -151,7 +158,7 @@ fn main() {
             next_top,
             small_size,
             next_color,
-            &font,
+            font.as_ref(),
         );
 
         let bar_width = (width as f32 * 0.5) as usize;
@@ -172,7 +179,7 @@ fn main() {
             bar_top + 10,
             18.0,
             GRAY,
-            &font,
+            font.as_ref(),
         );
 
         let has_lrc = !app.lines.is_empty();
@@ -211,7 +218,7 @@ fn main() {
                 btn_height,
                 label,
                 *color,
-                &font,
+                font.as_ref(),
             );
             if clicked
                 && in_rect(
@@ -404,12 +411,13 @@ fn find_current_index(lines: &[LrcLine], time: f32) -> Option<usize> {
         .map(|(idx, _)| idx)
 }
 
-fn calc_font_size(text: &str, width: usize, height: usize, font: &Font) -> f32 {
+fn calc_font_size(text: &str, width: usize, height: usize, font: Option<&Font>) -> f32 {
+    let Some(font) = font else { return 60.0 };
     let max_width = width as f32 * 0.95;
     let max_height = height as f32 * 0.3;
     let mut size = 300.0f32;
     while size > 30.0 {
-        let lines = wrap_text(text, max_width, size, font);
+        let lines = wrap_text(text, max_width, size, Some(font));
         let total = lines.len() as f32 * size * 1.1;
         if total <= max_height && lines.len() <= 2 {
             return size;
@@ -461,8 +469,9 @@ fn draw_text(
     top: i32,
     size: f32,
     color: u32,
-    font: &Font,
+    font: Option<&Font>,
 ) {
+    let Some(font) = font else { return };
     let scale = Scale::uniform(size);
     let metrics = font.v_metrics(scale);
     let offset = point(left as f32, top as f32 + metrics.ascent);
@@ -480,7 +489,10 @@ fn draw_text(
     }
 }
 
-fn text_width(text: &str, size: f32, font: &Font) -> f32 {
+fn text_width(text: &str, size: f32, font: Option<&Font>) -> f32 {
+    let Some(font) = font else {
+        return text.len() as f32 * size * 0.5;
+    };
     let scale = Scale::uniform(size);
     font.layout(text, scale, point(0.0, 0.0))
         .map(|g| g.position().x + g.unpositioned().h_metrics().advance_width)
@@ -488,7 +500,7 @@ fn text_width(text: &str, size: f32, font: &Font) -> f32 {
         .unwrap_or(0.0)
 }
 
-fn wrap_text(text: &str, max_width: f32, size: f32, font: &Font) -> Vec<String> {
+fn wrap_text(text: &str, max_width: f32, size: f32, font: Option<&Font>) -> Vec<String> {
     let words: Vec<&str> = text.split_whitespace().collect();
     if words.is_empty() {
         return vec![text.to_string()];
@@ -527,7 +539,7 @@ fn draw_text_centered(
     top: usize,
     size: f32,
     color: u32,
-    font: &Font,
+    font: Option<&Font>,
 ) {
     let max_width = buf_width as f32 * 0.95;
     let lines = wrap_text(text, max_width, size, font);
@@ -561,7 +573,7 @@ fn draw_button(
     height: usize,
     label: &str,
     color: u32,
-    font: &Font,
+    font: Option<&Font>,
 ) {
     draw_rect(buf, buf_width, left, top, width, height, BTN_BG);
     let size = 13.0;
