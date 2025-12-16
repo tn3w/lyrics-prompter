@@ -1,0 +1,166 @@
+name: Release
+
+on:
+  push:
+    paths:
+      - 'lyrics_prompter/Cargo.toml'
+    branches:
+      - main
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      changed: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep '^version' lyrics_prompter/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Check if version changed
+        id: check
+        run: |
+          git diff HEAD~1 HEAD -- lyrics_prompter/Cargo.toml | grep -q '^+version' && echo "changed=true" >> $GITHUB_OUTPUT || echo "changed=false" >> $GITHUB_OUTPUT
+
+  build-windows:
+    needs: check-version
+    if: needs.check-version.outputs.changed == 'true'
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+        working-directory: lyrics_prompter
+      - name: Package
+        run: |
+          $arch = if ("${{ matrix.target }}" -match "x86_64") { "x64" } else { "x86" }
+          mkdir dist
+          cp target/${{ matrix.target }}/release/lyrics_prompter.exe dist/lyrics_prompter-windows-$arch.exe
+        working-directory: lyrics_prompter
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.target }}
+          path: lyrics_prompter/dist/*
+
+  build-linux:
+    needs: check-version
+    if: needs.check-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libgtk-3-dev
+      - name: Build
+        run: cargo build --release
+        working-directory: lyrics_prompter
+      - name: Create AppImage
+        run: |
+          VERSION=${{ needs.check-version.outputs.version }}
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
+          cp target/release/lyrics_prompter AppDir/usr/bin/
+          cat > AppDir/usr/share/applications/lyrics_prompter.desktop << EOF
+          [Desktop Entry]
+          Name=Lyrics Prompter
+          Exec=lyrics_prompter
+          Icon=lyrics_prompter
+          Type=Application
+          Categories=AudioVideo;Audio;
+          EOF
+          cp AppDir/usr/share/applications/lyrics_prompter.desktop AppDir/
+          touch AppDir/usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
+          ln -s usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png AppDir/lyrics_prompter.png
+          cat > AppDir/AppRun << 'EOF'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          exec "${HERE}/usr/bin/lyrics_prompter" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ./appimagetool-x86_64.AppImage AppDir lyrics_prompter-x86_64.AppImage
+        working-directory: lyrics_prompter
+      - name: Create deb package
+        run: |
+          VERSION=${{ needs.check-version.outputs.version }}
+          mkdir -p deb/DEBIAN deb/usr/bin deb/usr/share/applications
+          cp target/release/lyrics_prompter deb/usr/bin/
+          cat > deb/DEBIAN/control << EOF
+          Package: lyrics-prompter
+          Version: ${VERSION}
+          Section: sound
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Unknown
+          Description: Lyrics prompter application
+           Display synchronized lyrics with audio playback.
+          EOF
+          cat > deb/usr/share/applications/lyrics_prompter.desktop << EOF
+          [Desktop Entry]
+          Name=Lyrics Prompter
+          Exec=lyrics_prompter
+          Type=Application
+          Categories=AudioVideo;Audio;
+          EOF
+          dpkg-deb --build deb lyrics_prompter-amd64.deb
+        working-directory: lyrics_prompter
+      - name: Create Arch PKGBUILD
+        run: |
+          VERSION=${{ needs.check-version.outputs.version }}
+          mkdir -p arch
+          cp target/release/lyrics_prompter arch/
+          cat > arch/PKGBUILD << EOF
+          pkgname=lyrics-prompter
+          pkgver=${VERSION}
+          pkgrel=1
+          pkgdesc="Lyrics prompter application"
+          arch=('x86_64')
+          license=('MIT')
+          depends=('alsa-lib' 'gtk3')
+          source=("lyrics_prompter")
+          sha256sums=('SKIP')
+          package() {
+            install -Dm755 "\$srcdir/lyrics_prompter" "\$pkgdir/usr/bin/lyrics_prompter"
+          }
+          EOF
+          cd arch && makepkg -f --noconfirm
+        working-directory: lyrics_prompter
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            lyrics_prompter/*.AppImage
+            lyrics_prompter/*.deb
+            lyrics_prompter/arch/*.pkg.tar.zst
+
+  release:
+    needs: [check-version, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.check-version.outputs.version }}
+          name: Release v${{ needs.check-version.outputs.version }}
+          files: |
+            artifacts/**/*
+          generate_release_notes: true
