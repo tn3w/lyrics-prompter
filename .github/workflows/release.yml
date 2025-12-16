@@ -5,7 +5,7 @@ on:
     paths:
       - 'Cargo.toml'
     branches:
-      - main
+      - master
 
 jobs:
   check-version:
@@ -76,6 +76,7 @@ jobs:
           Icon=lyrics_prompter
           Type=Application
           Categories=AudioVideo;Audio;
+          Comment=Display synchronized lyrics for karaoke-style prompting
           EOF
           cp AppDir/usr/share/applications/lyrics_prompter.desktop AppDir/
           touch AppDir/usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
@@ -101,9 +102,12 @@ jobs:
           Section: sound
           Priority: optional
           Architecture: amd64
-          Maintainer: Unknown
+          Maintainer: tn3w <tn3w@protonmail.com>
+          Homepage: https://github.com/tn3w/lyrics-prompter
           Description: Lyrics prompter application
-           Display synchronized lyrics with audio playback.
+           A lightweight desktop application for displaying synchronized lyrics,
+           designed for karaoke-style prompting during performances or practice sessions.
+           Supports LRC files and optional audio playback (MP3, WAV, OGG, FLAC).
           EOF
           cat > deb/usr/share/applications/lyrics_prompter.desktop << EOF
           [Desktop Entry]
@@ -111,6 +115,7 @@ jobs:
           Exec=lyrics_prompter
           Type=Application
           Categories=AudioVideo;Audio;
+          Comment=Display synchronized lyrics for karaoke-style prompting
           EOF
           dpkg-deb --build deb lyrics_prompter-amd64.deb
       - name: Create Arch PKGBUILD
@@ -122,9 +127,10 @@ jobs:
           pkgname=lyrics-prompter
           pkgver=${VERSION}
           pkgrel=1
-          pkgdesc="Lyrics prompter application"
+          pkgdesc="A lightweight desktop application for displaying synchronized lyrics"
           arch=('x86_64')
-          license=('MIT')
+          url="https://github.com/tn3w/lyrics-prompter"
+          license=('Apache-2.0')
           depends=('alsa-lib' 'gtk3')
           source=("lyrics_prompter")
           sha256sums=('SKIP')
