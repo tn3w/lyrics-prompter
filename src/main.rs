@@ -14,18 +14,10 @@ const BAR_BG: u32 = 0x252525;
 const BAR_FG: u32 = 0x707070;
 const GREEN: u32 = 0x4a9f4a;
 
-#[cfg(windows)]
-const FONT_PATH: &str = "C:/Windows/Fonts/arialbd.ttf";
-#[cfg(not(windows))]
-const FONT_PATH: &str = "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf";
-
-fn load_font() -> Option<Font<'static>> {
-    std::fs::read(FONT_PATH)
-        .ok()
-        .and_then(|data| Font::try_from_vec(data))
-}
+const FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
 
 fn main() {
+    let font = Font::try_from_bytes(FONT_DATA);
     let mut app = App::new();
     let mut width = 1024usize;
     let mut height = 600usize;
@@ -41,7 +33,6 @@ fn main() {
     )
     .unwrap();
     window.set_target_fps(60);
-    let font = load_font();
     let mut prev_mouse_down = false;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
