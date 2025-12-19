@@ -607,7 +607,25 @@ fn set_dark_title_bar(window: &Window) {
             size: u32,
         ) -> i32;
     }
+    #[link(name = "user32")]
+    extern "system" {
+        fn SendMessageW(hwnd: *mut c_void, msg: u32, wparam: usize, lparam: isize) -> isize;
+        fn GetModuleHandleW(name: *const u16) -> *mut c_void;
+        fn LoadImageW(
+            hinst: *mut c_void,
+            name: *const u16,
+            typ: u32,
+            cx: i32,
+            cy: i32,
+            flags: u32,
+        ) -> *mut c_void;
+    }
     const DWMWA_USE_IMMERSIVE_DARK_MODE: u32 = 20;
+    const WM_SETICON: u32 = 0x0080;
+    const ICON_SMALL: usize = 0;
+    const ICON_BIG: usize = 1;
+    const IMAGE_ICON: u32 = 1;
+    const LR_DEFAULTSIZE: u32 = 0x0040;
     unsafe {
         let hwnd = window.get_window_handle() as *mut c_void;
         let dark: u32 = 1;
@@ -617,6 +635,12 @@ fn set_dark_title_bar(window: &Window) {
             &dark as *const u32 as *const c_void,
             std::mem::size_of::<u32>() as u32,
         );
+        let hinstance = GetModuleHandleW(std::ptr::null());
+        let icon = LoadImageW(hinstance, 1 as *const u16, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE);
+        if !icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, ICON_SMALL, icon as isize);
+            SendMessageW(hwnd, WM_SETICON, ICON_BIG, icon as isize);
+        }
     }
 }
 
