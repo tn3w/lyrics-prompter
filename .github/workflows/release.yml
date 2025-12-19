@@ -156,12 +156,10 @@ jobs:
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
           mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          mkdir -p rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/bin
-          mkdir -p rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/applications
-          mkdir -p rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/icons/hicolor/256x256/apps
-          cp target/${{ matrix.target }}/release/lyrics_prompter rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/bin/
-          cp assets/icon.png rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
-          cat > rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/applications/lyrics_prompter.desktop << EOF
+          mkdir -p rpmbuild/SOURCES
+          cp target/${{ matrix.target }}/release/lyrics_prompter rpmbuild/SOURCES/
+          cp assets/icon.png rpmbuild/SOURCES/lyrics_prompter.png
+          cat > rpmbuild/SOURCES/lyrics_prompter.desktop << EOF
           [Desktop Entry]
           Name=Lyrics Prompter
           Exec=lyrics_prompter
@@ -186,9 +184,9 @@ jobs:
           mkdir -p %{buildroot}/usr/bin
           mkdir -p %{buildroot}/usr/share/applications
           mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps
-          cp -r %{_topdir}/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/bin/* %{buildroot}/usr/bin/
-          cp -r %{_topdir}/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/applications/* %{buildroot}/usr/share/applications/
-          cp -r %{_topdir}/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/icons/* %{buildroot}/usr/share/icons/
+          install -m 755 %{_topdir}/SOURCES/lyrics_prompter %{buildroot}/usr/bin/
+          install -m 644 %{_topdir}/SOURCES/lyrics_prompter.desktop %{buildroot}/usr/share/applications/
+          install -m 644 %{_topdir}/SOURCES/lyrics_prompter.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/
           
           %files
           /usr/bin/lyrics_prompter
