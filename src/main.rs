@@ -1,9 +1,13 @@
 #![windows_subsystem = "windows"]
 
-use minifb::{Icon, Key, MouseButton, MouseMode, Window, WindowOptions};
+#[cfg(any(windows, target_os = "linux"))]
+use minifb::Icon;
+use minifb::{Key, MouseButton, MouseMode, Window, WindowOptions};
 use rodio::{stream::OutputStream, stream::OutputStreamBuilder, Decoder, Sink};
 use rusttype::{point, Font, Scale};
-use std::{fs::File, io::BufReader, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
+#[cfg(windows)]
+use std::str::FromStr;
+use std::{fs::File, io::BufReader, path::PathBuf, sync::Arc, time::Instant};
 
 const BG: u32 = 0x121212;
 const WHITE: u32 = 0xf0f0f0;
@@ -45,7 +49,7 @@ fn main() {
     }
 
     #[cfg(target_os = "linux")]
-    window.set_icon(Icon::Buffer(ICON_ARGB.to_vec()));
+    window.set_icon(Icon::Buffer(ICON_ARGB.as_ptr(), ICON_ARGB.len() as u32));
 
     let mut prev_mouse_down = false;
 

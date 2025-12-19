@@ -40,6 +40,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.target == 'x86_64-pc-windows-msvc' && 'x64' || 'x86' }}
       - name: Setup icon resource
         run: |
           echo '1 ICON "assets/icon.ico"' > assets/icon.rc
@@ -49,8 +53,6 @@ jobs:
         env:
           RUSTFLAGS: -Clink-arg=assets/icon.res
         run: cargo build --release --target ${{ matrix.target }}
-      - name: Copy icon for runtime
-        run: cp assets/icon.ico target/${{ matrix.target }}/release/
       - name: Package
         run: |
           $arch = if ("${{ matrix.target }}" -match "x86_64") { "x64" } else { "x86" }
