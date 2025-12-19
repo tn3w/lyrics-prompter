@@ -40,13 +40,24 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
+      - name: Setup icon resource
+        run: |
+          echo '1 ICON "assets/icon.ico"' > assets/icon.rc
+          rc /fo assets/icon.res assets/icon.rc
+        shell: cmd
       - name: Build
+        env:
+          RUSTFLAGS: -Clink-arg=assets/icon.res
         run: cargo build --release --target ${{ matrix.target }}
+      - name: Copy icon for runtime
+        run: cp assets/icon.ico target/${{ matrix.target }}/release/
       - name: Package
         run: |
           $arch = if ("${{ matrix.target }}" -match "x86_64") { "x64" } else { "x86" }
           mkdir dist
           cp target/${{ matrix.target }}/release/lyrics_prompter.exe dist/lyrics_prompter-windows-$arch.exe
+          mkdir dist/assets
+          cp assets/icon.ico dist/assets/
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.target }}
@@ -56,20 +67,38 @@ jobs:
     needs: check-version
     if: needs.check-version.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            arch: x86_64
+            deb_arch: amd64
+          - target: i686-unknown-linux-gnu
+            arch: i686
+            deb_arch: i386
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libgtk-3-dev
+          if [ "${{ matrix.arch }}" = "i686" ]; then
+            sudo dpkg --add-architecture i386
+            sudo apt-get update
+            sudo apt-get install -y gcc-multilib libasound2-dev:i386 libgtk-3-dev:i386
+          else
+            sudo apt-get install -y libasound2-dev libgtk-3-dev rpm
+          fi
       - name: Build
-        run: cargo build --release
+        run: cargo build --release --target ${{ matrix.target }}
       - name: Create AppImage
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
-          cp target/release/lyrics_prompter AppDir/usr/bin/
+          cp target/${{ matrix.target }}/release/lyrics_prompter AppDir/usr/bin/
+          cp assets/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
           cat > AppDir/usr/share/applications/lyrics_prompter.desktop << EOF
           [Desktop Entry]
           Name=Lyrics Prompter
@@ -80,29 +109,29 @@ jobs:
           Comment=Display synchronized lyrics for karaoke-style prompting
           EOF
           cp AppDir/usr/share/applications/lyrics_prompter.desktop AppDir/
-          touch AppDir/usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
           ln -s usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png AppDir/lyrics_prompter.png
-          cat > AppDir/AppRun << 'EOF'
+          cat > AppDir/AppRun << 'APPRUN'
           #!/bin/bash
           SELF=$(readlink -f "$0")
           HERE=${SELF%/*}
           exec "${HERE}/usr/bin/lyrics_prompter" "$@"
-          EOF
+          APPRUN
           chmod +x AppDir/AppRun
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
-          ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool-x86_64.AppImage AppDir lyrics_prompter-x86_64.AppImage
+          ARCH=${{ matrix.arch }} APPIMAGE_EXTRACT_AND_RUN=1 ./appimagetool-x86_64.AppImage AppDir lyrics_prompter-${{ matrix.arch }}.AppImage
       - name: Create deb package
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
-          mkdir -p deb/DEBIAN deb/usr/bin deb/usr/share/applications
-          cp target/release/lyrics_prompter deb/usr/bin/
+          mkdir -p deb/DEBIAN deb/usr/bin deb/usr/share/applications deb/usr/share/icons/hicolor/256x256/apps
+          cp target/${{ matrix.target }}/release/lyrics_prompter deb/usr/bin/
+          cp assets/icon.png deb/usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
           cat > deb/DEBIAN/control << EOF
           Package: lyrics-prompter
           Version: ${VERSION}
           Section: sound
           Priority: optional
-          Architecture: amd64
+          Architecture: ${{ matrix.deb_arch }}
           Maintainer: tn3w <tn3w@protonmail.com>
           Homepage: https://github.com/tn3w/lyrics-prompter
           Description: Lyrics prompter application
@@ -114,16 +143,63 @@ jobs:
           [Desktop Entry]
           Name=Lyrics Prompter
           Exec=lyrics_prompter
+          Icon=lyrics_prompter
           Type=Application
           Categories=AudioVideo;Audio;
           Comment=Display synchronized lyrics for karaoke-style prompting
           EOF
-          dpkg-deb --build deb lyrics_prompter-amd64.deb
+          dpkg-deb --build deb lyrics_prompter-${{ matrix.deb_arch }}.deb
+      - name: Create RPM package
+        if: matrix.arch == 'x86_64'
+        run: |
+          VERSION=${{ needs.check-version.outputs.version }}
+          mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          mkdir -p rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/bin
+          mkdir -p rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/applications
+          mkdir -p rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/icons/hicolor/256x256/apps
+          cp target/${{ matrix.target }}/release/lyrics_prompter rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/bin/
+          cp assets/icon.png rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
+          cat > rpmbuild/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/applications/lyrics_prompter.desktop << EOF
+          [Desktop Entry]
+          Name=Lyrics Prompter
+          Exec=lyrics_prompter
+          Icon=lyrics_prompter
+          Type=Application
+          Categories=AudioVideo;Audio;
+          Comment=Display synchronized lyrics for karaoke-style prompting
+          EOF
+          cat > rpmbuild/SPECS/lyrics-prompter.spec << EOF
+          Name: lyrics-prompter
+          Version: ${VERSION}
+          Release: 1
+          Summary: Lyrics prompter application
+          License: Apache-2.0
+          URL: https://github.com/tn3w/lyrics-prompter
+          
+          %description
+          A lightweight desktop application for displaying synchronized lyrics,
+          designed for karaoke-style prompting during performances or practice sessions.
+          
+          %install
+          mkdir -p %{buildroot}/usr/bin
+          mkdir -p %{buildroot}/usr/share/applications
+          mkdir -p %{buildroot}/usr/share/icons/hicolor/256x256/apps
+          cp -r %{_topdir}/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/bin/* %{buildroot}/usr/bin/
+          cp -r %{_topdir}/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/applications/* %{buildroot}/usr/share/applications/
+          cp -r %{_topdir}/BUILDROOT/lyrics-prompter-${VERSION}-1.x86_64/usr/share/icons/* %{buildroot}/usr/share/icons/
+          
+          %files
+          /usr/bin/lyrics_prompter
+          /usr/share/applications/lyrics_prompter.desktop
+          /usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
+          EOF
+          rpmbuild --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/lyrics-prompter.spec
+          cp rpmbuild/RPMS/x86_64/*.rpm lyrics_prompter-x86_64.rpm
       - name: Create Arch package
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
           mkdir -p arch-pkg/usr/bin
-          cp target/release/lyrics_prompter arch-pkg/usr/bin/
+          cp target/${{ matrix.target }}/release/lyrics_prompter arch-pkg/usr/bin/
           cat > arch-pkg/.PKGINFO << EOF
           pkgname = lyrics-prompter
           pkgver = ${VERSION}-1
@@ -131,19 +207,20 @@ jobs:
           url = https://github.com/tn3w/lyrics-prompter
           builddate = $(date +%s)
           packager = GitHub Actions
-          size = $(stat -c%s target/release/lyrics_prompter)
-          arch = x86_64
+          size = $(stat -c%s target/${{ matrix.target }}/release/lyrics_prompter)
+          arch = ${{ matrix.arch }}
           license = Apache-2.0
           depend = alsa-lib
           depend = gtk3
           EOF
-          cd arch-pkg && tar -czvf ../lyrics-prompter-x86_64.pkg.tar.gz .PKGINFO usr
+          cd arch-pkg && tar -czvf ../lyrics-prompter-${{ matrix.arch }}.pkg.tar.gz .PKGINFO usr
       - uses: actions/upload-artifact@v4
         with:
-          name: linux
+          name: linux-${{ matrix.arch }}
           path: |
             *.AppImage
             *.deb
+            *.rpm
             *.pkg.tar.gz
 
   release:

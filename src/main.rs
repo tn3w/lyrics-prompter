@@ -1,9 +1,9 @@
 #![windows_subsystem = "windows"]
 
-use minifb::{Key, MouseButton, MouseMode, Window, WindowOptions};
+use minifb::{Icon, Key, MouseButton, MouseMode, Window, WindowOptions};
 use rodio::{stream::OutputStream, stream::OutputStreamBuilder, Decoder, Sink};
 use rusttype::{point, Font, Scale};
-use std::{fs::File, io::BufReader, path::PathBuf, sync::Arc, time::Instant};
+use std::{fs::File, io::BufReader, path::PathBuf, str::FromStr, sync::Arc, time::Instant};
 
 const BG: u32 = 0x121212;
 const WHITE: u32 = 0xf0f0f0;
@@ -15,6 +15,8 @@ const BAR_FG: u32 = 0x707070;
 const GREEN: u32 = 0x4a9f4a;
 
 const FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
+#[cfg(target_os = "linux")]
+const ICON_ARGB: &[u64] = include!("../assets/icon_argb.rs");
 
 fn main() {
     let font = Font::try_from_bytes(FONT_DATA);
@@ -33,6 +35,18 @@ fn main() {
     )
     .unwrap();
     window.set_target_fps(60);
+
+    #[cfg(windows)]
+    {
+        set_dark_title_bar(&window);
+        if let Ok(icon) = Icon::from_str("assets/icon.ico") {
+            window.set_icon(icon);
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    window.set_icon(Icon::Buffer(ICON_ARGB.to_vec()));
+
     let mut prev_mouse_down = false;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
@@ -582,6 +596,31 @@ fn draw_button(
         color,
         font,
     );
+}
+
+#[cfg(windows)]
+fn set_dark_title_bar(window: &Window) {
+    use std::ffi::c_void;
+    #[link(name = "dwmapi")]
+    extern "system" {
+        fn DwmSetWindowAttribute(
+            hwnd: *mut c_void,
+            attr: u32,
+            val: *const c_void,
+            size: u32,
+        ) -> i32;
+    }
+    const DWMWA_USE_IMMERSIVE_DARK_MODE: u32 = 20;
+    unsafe {
+        let hwnd = window.get_window_handle() as *mut c_void;
+        let dark: u32 = 1;
+        DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_USE_IMMERSIVE_DARK_MODE,
+            &dark as *const u32 as *const c_void,
+            std::mem::size_of::<u32>() as u32,
+        );
+    }
 }
 
 fn set_fullscreen(window: &Window, fullscreen: bool) {

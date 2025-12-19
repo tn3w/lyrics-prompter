@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-x86_64.AppImage"><img src="https://img.shields.io/badge/Linux-AppImage-orange?style=for-the-badge&logo=linux" alt="Linux AppImage Download"></a>
   <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-amd64.deb"><img src="https://img.shields.io/badge/Linux-.deb-orange?style=for-the-badge&logo=debian" alt="Linux .deb Download"></a>
+  <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-x86_64.rpm"><img src="https://img.shields.io/badge/Linux-.rpm-orange?style=for-the-badge&logo=redhat" alt="Linux .rpm Download"></a>
   <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics-prompter-x86_64.pkg.tar.gz"><img src="https://img.shields.io/badge/Linux-Arch-orange?style=for-the-badge&logo=archlinux" alt="Arch Linux Download"></a>
 </p>
 
