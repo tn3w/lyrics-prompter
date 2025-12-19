@@ -19,6 +19,8 @@ const GREEN: u32 = 0x4a9f4a;
 const FONT_DATA: &[u8] = include_bytes!("../assets/font.ttf");
 #[cfg(target_os = "linux")]
 const ICON_ARGB: &[u64] = include!("../assets/icon_argb.rs");
+#[cfg(windows)]
+const ICON_ICO: &[u8] = include_bytes!("../assets/icon.ico");
 
 fn main() {
     let font = Font::try_from_bytes(FONT_DATA);
@@ -39,7 +41,7 @@ fn main() {
     window.set_target_fps(60);
 
     #[cfg(windows)]
-    set_dark_title_bar(&window);
+    setup_window(&window);
 
     #[cfg(target_os = "linux")]
     window.set_icon(Icon::Buffer(ICON_ARGB.as_ptr(), ICON_ARGB.len() as u32));
@@ -596,50 +598,55 @@ fn draw_button(
 }
 
 #[cfg(windows)]
-fn set_dark_title_bar(window: &Window) {
+fn setup_window(window: &Window) {
     use std::ffi::c_void;
     #[link(name = "dwmapi")]
     extern "system" {
-        fn DwmSetWindowAttribute(
-            hwnd: *mut c_void,
-            attr: u32,
-            val: *const c_void,
-            size: u32,
-        ) -> i32;
+        fn DwmSetWindowAttribute(h: *mut c_void, a: u32, v: *const c_void, s: u32) -> i32;
     }
     #[link(name = "user32")]
     extern "system" {
-        fn SendMessageW(hwnd: *mut c_void, msg: u32, wparam: usize, lparam: isize) -> isize;
-        fn GetModuleHandleW(name: *const u16) -> *mut c_void;
-        fn LoadImageW(
-            hinst: *mut c_void,
-            name: *const u16,
-            typ: u32,
-            cx: i32,
-            cy: i32,
-            flags: u32,
+        fn SendMessageW(h: *mut c_void, m: u32, w: usize, l: isize) -> isize;
+        fn CreateIconFromResourceEx(
+            p: *const u8,
+            s: u32,
+            i: i32,
+            v: u32,
+            x: i32,
+            y: i32,
+            f: u32,
         ) -> *mut c_void;
     }
-    const DWMWA_USE_IMMERSIVE_DARK_MODE: u32 = 20;
-    const WM_SETICON: u32 = 0x0080;
-    const ICON_SMALL: usize = 0;
-    const ICON_BIG: usize = 1;
-    const IMAGE_ICON: u32 = 1;
-    const LR_DEFAULTSIZE: u32 = 0x0040;
     unsafe {
         let hwnd = window.get_window_handle() as *mut c_void;
         let dark: u32 = 1;
-        DwmSetWindowAttribute(
-            hwnd,
-            DWMWA_USE_IMMERSIVE_DARK_MODE,
-            &dark as *const u32 as *const c_void,
-            std::mem::size_of::<u32>() as u32,
-        );
-        let hinstance = GetModuleHandleW(std::ptr::null());
-        let icon = LoadImageW(hinstance, 1 as *const u16, IMAGE_ICON, 0, 0, LR_DEFAULTSIZE);
-        if !icon.is_null() {
-            SendMessageW(hwnd, WM_SETICON, ICON_SMALL, icon as isize);
-            SendMessageW(hwnd, WM_SETICON, ICON_BIG, icon as isize);
+        DwmSetWindowAttribute(hwnd, 20, &dark as *const _ as _, 4);
+        let entry = 6;
+        let size = u32::from_le_bytes([
+            ICON_ICO[entry + 8],
+            ICON_ICO[entry + 9],
+            ICON_ICO[entry + 10],
+            ICON_ICO[entry + 11],
+        ]);
+        let offset = u32::from_le_bytes([
+            ICON_ICO[entry + 12],
+            ICON_ICO[entry + 13],
+            ICON_ICO[entry + 14],
+            ICON_ICO[entry + 15],
+        ]) as usize;
+        for (idx, sz) in [(0usize, 16i32), (1, 32)] {
+            let icon = CreateIconFromResourceEx(
+                ICON_ICO.as_ptr().add(offset),
+                size,
+                1,
+                0x30000,
+                sz,
+                sz,
+                0,
+            );
+            if !icon.is_null() {
+                SendMessageW(hwnd, 0x80, idx, icon as isize);
+            }
         }
     }
 }
