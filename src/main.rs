@@ -1,12 +1,10 @@
 #![windows_subsystem = "windows"]
 
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(target_os = "linux")]
 use minifb::Icon;
 use minifb::{Key, MouseButton, MouseMode, Window, WindowOptions};
 use rodio::{stream::OutputStream, stream::OutputStreamBuilder, Decoder, Sink};
 use rusttype::{point, Font, Scale};
-#[cfg(windows)]
-use std::str::FromStr;
 use std::{fs::File, io::BufReader, path::PathBuf, sync::Arc, time::Instant};
 
 const BG: u32 = 0x121212;
@@ -41,12 +39,7 @@ fn main() {
     window.set_target_fps(60);
 
     #[cfg(windows)]
-    {
-        set_dark_title_bar(&window);
-        if let Ok(icon) = Icon::from_str("assets/icon.ico") {
-            window.set_icon(icon);
-        }
-    }
+    set_dark_title_bar(&window);
 
     #[cfg(target_os = "linux")]
     window.set_icon(Icon::Buffer(ICON_ARGB.as_ptr(), ICON_ARGB.len() as u32));

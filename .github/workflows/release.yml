@@ -58,12 +58,10 @@ jobs:
           $arch = if ("${{ matrix.target }}" -match "x86_64") { "x64" } else { "x86" }
           mkdir dist
           cp target/${{ matrix.target }}/release/lyrics_prompter.exe dist/lyrics_prompter-windows-$arch.exe
-          mkdir dist/assets
-          cp assets/icon.ico dist/assets/
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.target }}
-          path: dist/*
+          path: dist/*.exe
 
   build-linux:
     needs: check-version
