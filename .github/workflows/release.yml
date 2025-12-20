@@ -269,7 +269,7 @@ jobs:
         with:
           name: linux
           path: |
-            *.AppImage
+            lyrics_prompter-x86_64.AppImage
             *.deb
             *.rpm
             *.pkg.tar.gz
