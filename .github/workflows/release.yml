@@ -177,8 +177,19 @@ jobs:
       - name: Create Arch package
         run: |
           VERSION=${{ needs.check-version.outputs.version }}
-          mkdir -p arch-pkg/usr/bin
+          mkdir -p arch-pkg/usr/bin arch-pkg/usr/share/applications arch-pkg/usr/share/icons/hicolor/256x256/apps
           cp target/release/lyrics_prompter arch-pkg/usr/bin/
+          ln -s lyrics_prompter arch-pkg/usr/bin/lyrics-prompter
+          cp assets/icon.png arch-pkg/usr/share/icons/hicolor/256x256/apps/lyrics_prompter.png
+          cat > arch-pkg/usr/share/applications/lyrics_prompter.desktop << EOF
+          [Desktop Entry]
+          Name=Lyrics Prompter
+          Exec=lyrics_prompter
+          Icon=lyrics_prompter
+          Type=Application
+          Categories=AudioVideo;Audio;
+          Comment=Display synchronized lyrics for karaoke-style prompting
+          EOF
           cat > arch-pkg/.PKGINFO << EOF
           pkgname = lyrics-prompter
           pkgver = ${VERSION}-1
