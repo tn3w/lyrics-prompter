@@ -6,11 +6,11 @@
 <p align="center">A lightweight desktop application for <strong>displaying synchronized lyrics</strong>, designed for karaoke-style prompting during performances or practice sessions.</p>
 
 <p align="center">
-  <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-windows-x64-setup.exe"><img src="https://img.shields.io/badge/Windows_x64-Installer-blue?style=for-the-badge&logo=windows" alt="Windows Installer"></a>
+  <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-windows-x64-setup.exe"><img src="https://img.shields.io/badge/Windows-Installer-blue?style=for-the-badge&logo=windows" alt="Windows Installer"></a>
   <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-windows-x86-setup.exe"><img src="https://img.shields.io/badge/Windows_x86-Installer-blue?style=for-the-badge&logo=windows" alt="Windows x86 Installer"></a>
 </p>
 <p align="center">
-  <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-windows-x64.exe"><img src="https://img.shields.io/badge/Windows_x64-Portable-blue?style=for-the-badge&logo=windows" alt="Windows Portable"></a>
+  <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-windows-x64.exe"><img src="https://img.shields.io/badge/Windows-Portable-blue?style=for-the-badge&logo=windows" alt="Windows Portable"></a>
   <a href="https://github.com/tn3w/lyrics-prompter/releases/latest/download/lyrics_prompter-windows-x86.exe"><img src="https://img.shields.io/badge/Windows_x86-Portable-blue?style=for-the-badge&logo=windows" alt="Windows x86 Portable"></a>
 </p>
 <p align="center">
