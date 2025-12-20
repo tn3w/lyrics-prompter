@@ -44,6 +44,8 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.target == 'x86_64-pc-windows-msvc' && 'x64' || 'x86' }}
+      - name: Install NSIS
+        run: choco install nsis -y
       - name: Setup icon resource
         run: |
           echo '1 ICON "assets/icon.ico"' > assets/icon.rc
