@@ -1,6 +1,6 @@
 [package]
 name = "lyrics_prompter"
-version = "1.0.3"
+version = "1.0.4"
 edition = "2021"
 authors = ["tn3w <tn3w@protonmail.com>"]
 license = "Apache-2.0"

@@ -58,10 +58,69 @@ jobs:
           $arch = if ("${{ matrix.target }}" -match "x86_64") { "x64" } else { "x86" }
           mkdir dist
           cp target/${{ matrix.target }}/release/lyrics_prompter.exe dist/lyrics_prompter-windows-$arch.exe
+      - name: Create NSIS installer
+        run: |
+          $arch = if ("${{ matrix.target }}" -match "x86_64") { "x64" } else { "x86" }
+          $version = "${{ needs.check-version.outputs.version }}"
+          @"
+          !include "MUI2.nsh"
+          
+          Name "Lyrics Prompter"
+          OutFile "dist\lyrics_prompter-windows-$arch-setup.exe"
+          InstallDir "`$PROGRAMFILES\Lyrics Prompter"
+          RequestExecutionLevel admin
+          
+          !define MUI_ICON "assets\icon.ico"
+          !define MUI_UNICON "assets\icon.ico"
+          
+          !insertmacro MUI_PAGE_WELCOME
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_PAGE_FINISH
+          
+          !insertmacro MUI_UNPAGE_CONFIRM
+          !insertmacro MUI_UNPAGE_INSTFILES
+          
+          !insertmacro MUI_LANGUAGE "English"
+          
+          Section "Install"
+            SetOutPath "`$INSTDIR"
+            File "target\${{ matrix.target }}\release\lyrics_prompter.exe"
+            File "assets\icon.ico"
+            
+            CreateDirectory "`$SMPROGRAMS\Lyrics Prompter"
+            CreateShortcut "`$SMPROGRAMS\Lyrics Prompter\Lyrics Prompter.lnk" "`$INSTDIR\lyrics_prompter.exe" "" "`$INSTDIR\icon.ico"
+            CreateShortcut "`$SMPROGRAMS\Lyrics Prompter\Uninstall.lnk" "`$INSTDIR\uninstall.exe"
+            CreateShortcut "`$DESKTOP\Lyrics Prompter.lnk" "`$INSTDIR\lyrics_prompter.exe" "" "`$INSTDIR\icon.ico"
+            
+            WriteUninstaller "`$INSTDIR\uninstall.exe"
+            
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LyricsPrompter" "DisplayName" "Lyrics Prompter"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LyricsPrompter" "UninstallString" "`$INSTDIR\uninstall.exe"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LyricsPrompter" "DisplayIcon" "`$INSTDIR\icon.ico"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LyricsPrompter" "DisplayVersion" "$version"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LyricsPrompter" "Publisher" "tn3w"
+          SectionEnd
+          
+          Section "Uninstall"
+            Delete "`$INSTDIR\lyrics_prompter.exe"
+            Delete "`$INSTDIR\icon.ico"
+            Delete "`$INSTDIR\uninstall.exe"
+            RMDir "`$INSTDIR"
+            
+            Delete "`$SMPROGRAMS\Lyrics Prompter\Lyrics Prompter.lnk"
+            Delete "`$SMPROGRAMS\Lyrics Prompter\Uninstall.lnk"
+            RMDir "`$SMPROGRAMS\Lyrics Prompter"
+            Delete "`$DESKTOP\Lyrics Prompter.lnk"
+            
+            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\LyricsPrompter"
+          SectionEnd
+          "@ | Out-File -Encoding UTF8 installer.nsi
+          makensis installer.nsi
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.target }}
-          path: dist/*.exe
+          path: dist/*
 
   build-linux:
     needs: check-version
